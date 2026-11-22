@@ -19,6 +19,10 @@
 .cat:hover{border-color:var(--accent);transform:translateY(-2px)}
 .cat b{font-size:15px;font-weight:600}
 .cat span{font-size:13px;color:var(--ink-muted);line-height:19px}
+.cat .ex{display:flex;flex-wrap:wrap;gap:4px;margin-top:8px}
+.cat .ex i{font-style:normal;font-size:11.5px;line-height:16px;padding:3px 8px;border-radius:999px;background:var(--hairline);color:var(--ink)}
+.cat .ic{width:36px;height:36px;border-radius:11px;background:var(--aqua);display:grid;place-items:center;font-weight:700;font-size:15px;margin-bottom:6px}
+.label-row{display:flex;justify-content:space-between;align-items:center;gap:8px}
 .picked{display:flex;align-items:center;gap:var(--s2);flex-wrap:wrap}
 .purpose-chips{display:flex;flex-wrap:wrap;gap:var(--s2)}
 .purpose-chips button{font:500 13px/18px var(--sans);padding:7px 14px;border-radius:999px;border:1px solid var(--line);background:var(--glass-strong);color:var(--ink);cursor:pointer}
@@ -129,7 +133,9 @@ th{font-weight:500;color:var(--ink-muted);font-size:12px}
       main.replaceChildren(h("div", { class: "pane" }, backBtn(),
         h("div", {}, h("h2", { text: "어떤 분야인가요?" }), h("p", { class: "lead", text: "분야를 고르면 그 분야에 맞춰 1:1 문의가 시작돼요." })),
         h("div", { class: "cat-grid" }, Object.entries(CATEGORIES).map(([k, c]) =>
-          h("button", { class: "cat", type: "button", onclick: () => show({ view: "new", cat: k }) }, h("b", { text: c.label }), h("span", { text: c.desc }))))));
+          h("button", { class: "cat", type: "button", onclick: () => show({ view: "new", cat: k }) },
+            h("span", { class: "ic", "aria-hidden": "true", text: c.label.slice(0, 1) }), h("b", { text: c.label }), h("span", { text: c.desc }),
+            h("span", { class: "ex" }, c.purposes.slice(0, 3).map((x) => h("i", { text: x })))))))); 
       return;
     }
     const c = CATEGORIES[cat];
@@ -163,7 +169,12 @@ th{font-weight:500;color:var(--ink-muted);font-size:12px}
       } },
         h("div", { class: "field" }, h("span", { class: "label", text: "어디에 쓸 건가요?" }), chips, extra),
         h("div", { class: "field" }, h("label", { for: "n-title", text: "제목" }), title),
-        h("div", { class: "field" }, h("label", { for: "n-body", text: "내용" }), body),
+        h("div", { class: "field" }, h("div", { class: "label-row" }, h("label", { for: "n-body", text: "내용" }),
+          h("button", { class: "btn btn-quiet btn-sm", type: "button", onclick: () => {
+            if (body.value.trim() && !body.value.includes("꼭 필요한 기능:")) body.value += "\n\n";
+            if (!body.value.includes("꼭 필요한 기능:")) body.value += "꼭 필요한 기능: \n원하는 완료 날짜: \n예산 범위: \n참고할 자료나 링크: ";
+            body.focus();
+          } }, "문의 양식 넣기")), body),
         msg, h("div", {}, btn))));
     title.focus();
   }
