@@ -1,0 +1,307 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>관리 · Hy2</title>
+<meta name="robots" content="noindex">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='16' fill='%23141a22'/%3E%3Ctext x='10' y='42' font-family='Arial' font-weight='700' font-size='28' fill='%23eef2f6'%3EHy%3C/text%3E%3Ctext x='45' y='48' font-family='Arial' font-weight='700' font-size='16' fill='%23bfe6f0'%3E2%3C/text%3E%3C/svg%3E">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Noto+Sans+KR:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap">
+<link rel="stylesheet" href="assets/style.css">
+<style>
+.wrap{max-width:1280px}
+.topbar{display:flex;flex-wrap:wrap;justify-content:space-between;align-items:center;gap:var(--s4);margin-bottom:var(--s4)}
+.stats{display:flex;gap:var(--s2);flex-wrap:wrap}
+.stat{padding:8px 14px;border-radius:12px;font-size:13px;color:var(--ink-muted)}
+.stat b{color:var(--ink);font-size:15px;margin-left:6px;font-variant-numeric:tabular-nums}
+.filters{display:flex;gap:6px}
+.filters select{height:36px;font-size:13px;padding:0 10px}
+.panel-box{border-radius:var(--r-lg);padding:var(--s4) var(--s4) var(--s6);margin-bottom:var(--s10)}
+.panel-head{display:flex;justify-content:space-between;align-items:center;gap:var(--s4);flex-wrap:wrap;padding:var(--s2) var(--s2) var(--s4)}
+.panel-head .input{max-width:260px;height:38px;font-size:14px}
+.table-wrap{overflow-x:auto}
+table{width:100%;border-collapse:collapse;font-size:13px;font-variant-numeric:tabular-nums}
+th,td{text-align:left;padding:11px 12px;border-bottom:1px solid var(--hairline);white-space:nowrap;vertical-align:middle}
+th{font-weight:500;color:var(--ink-muted);font-size:12px;position:sticky;top:0;background:var(--glass-strong)}
+tr:hover td{background:var(--hairline)}
+td .sub{display:block;font-size:12px;color:var(--ink-muted)}
+.row-actions{display:flex;gap:4px;flex-wrap:nowrap}
+.menu{position:relative}
+.menu-list{position:absolute;right:0;top:calc(100% + 4px);z-index:30;min-width:180px;padding:6px;border-radius:14px;display:grid;background:var(--glass-strong)}
+.menu-list button{border:0;background:none;text-align:left;padding:9px 12px;border-radius:9px;font:500 13px/1.2 var(--sans);color:var(--ink);cursor:pointer}
+.menu-list button:hover{background:var(--hairline)}
+.menu-list button.danger{color:var(--danger)}
+.rv{display:grid;gap:6px;padding:var(--s4);border-bottom:1px solid var(--hairline)}
+.rv-top{display:flex;justify-content:space-between;align-items:center;gap:var(--s2)}
+</style>
+</head>
+<body>
+<canvas id="orbs" aria-hidden="true"></canvas>
+<div class="wrap">
+  <div class="nav-shell">
+    <nav class="nav glass" aria-label="관리 메뉴">
+      <a class="brand" href="index.html">Hy<sub>2</sub> <span class="muted" style="font-size:13px;font-weight:500">관리</span></a>
+      <div class="nav-right">
+        <a class="btn btn-quiet btn-sm btn-pill" href="inquiry.html?account=1">내 계정</a>
+        <button class="btn btn-quiet btn-sm btn-pill" type="button" id="logout-btn">로그아웃</button>
+      </div>
+    </nav>
+  </div>
+
+  <div class="topbar">
+    <div class="tabs glass" role="tablist" aria-label="관리 화면">
+      <button role="tab" id="tab-inbox" aria-selected="true" data-tab="inbox">문의함</button>
+      <button role="tab" id="tab-users" aria-selected="false" data-tab="users">회원</button>
+      <button role="tab" id="tab-logs" aria-selected="false" data-tab="logs">로그인 기록</button>
+      <button role="tab" id="tab-reviews" aria-selected="false" data-tab="reviews">후기</button>
+    </div>
+    <div class="stats" id="stats"></div>
+  </div>
+
+  <section id="view-inbox" role="tabpanel" aria-labelledby="tab-inbox">
+    <div class="app" id="app">
+      <aside class="side glass" aria-label="전체 문의">
+        <div class="filters">
+          <select class="input" id="f-status" aria-label="상태">
+            <option value="">전체 상태</option><option value="open">답변 대기</option><option value="answered">답변 완료</option><option value="closed">종료</option>
+          </select>
+          <select class="input" id="f-cat" aria-label="분야"><option value="">전체 분야</option></select>
+        </div>
+        <div class="tlist" id="tlist"></div>
+      </aside>
+      <main class="main glass" id="main"><div class="empty">왼쪽에서 문의를 골라 주세요.</div></main>
+    </div>
+  </section>
+
+  <section id="view-users" role="tabpanel" aria-labelledby="tab-users" hidden>
+    <div class="panel-box glass">
+      <div class="panel-head"><b>회원 목록</b><input class="input" id="u-search" placeholder="아이디·이름·이메일·IP 검색" aria-label="회원 검색"></div>
+      <div class="table-wrap"><table>
+        <thead><tr><th>회원</th><th>이메일</th><th>OTP</th><th>마지막 로그인</th><th>IP</th><th>기기</th><th>VPN</th><th>문의</th><th>상태</th><th></th></tr></thead>
+        <tbody id="u-body"></tbody>
+      </table></div>
+    </div>
+  </section>
+
+  <section id="view-logs" role="tabpanel" aria-labelledby="tab-logs" hidden>
+    <div class="panel-box glass">
+      <div class="panel-head"><b>로그인 기록 <span class="muted" style="font-weight:400;font-size:13px">· 최근 300건 · 3개월 후 자동 삭제</span></b><input class="input" id="l-search" placeholder="아이디·IP 검색" aria-label="기록 검색"></div>
+      <div class="table-wrap"><table>
+        <thead><tr><th>일시</th><th>회원</th><th>IP</th><th>국가</th><th>기기</th><th>OS</th><th>브라우저</th><th>VPN</th></tr></thead>
+        <tbody id="l-body"></tbody>
+      </table></div>
+    </div>
+  </section>
+
+  <section id="view-reviews" role="tabpanel" aria-labelledby="tab-reviews" hidden>
+    <div class="panel-box glass">
+      <div class="panel-head"><b>공개 후기 <span class="muted" style="font-weight:400;font-size:13px">· 최신 10개만 유지돼요</span></b></div>
+      <div id="r-list"></div>
+    </div>
+  </section>
+</div>
+
+<script src="assets/vendor/supabase-2.45.4.js"></script>
+<script src="assets/app.js"></script>
+<script src="assets/chat.js"></script>
+<script>
+(async () => {
+  const { sb, h, $, $$, toast, confirmBox, formBox, callFn, errMsg, CATEGORIES, STATUS, ago, timeFull, requireUser, logout } = Hy2;
+  const me = await requireUser({ admin: true });
+  if (!me) return;
+  $("#logout-btn").onclick = logout;
+
+  let users = [], userMap = new Map(), unmount = () => {}, current = null;
+
+  // 탭
+  const tabs = $$("[data-tab]");
+  function openTab(name) {
+    tabs.forEach((b) => b.setAttribute("aria-selected", b.dataset.tab === name));
+    for (const v of ["inbox", "users", "logs", "reviews"]) $(`#view-${v}`).hidden = v !== name;
+    history.replaceState(null, "", `#${name}`);
+    if (name === "users") loadUsers();
+    if (name === "logs") loadLogs();
+    if (name === "reviews") loadReviews();
+  }
+  tabs.forEach((b) => b.addEventListener("click", () => openTab(b.dataset.tab)));
+
+  // ── 문의함 ──
+  for (const [k, c] of Object.entries(CATEGORIES)) $("#f-cat").append(h("option", { value: k, text: c.label }));
+  $("#f-status").onchange = loadTickets;
+  $("#f-cat").onchange = loadTickets;
+
+  async function loadTickets() {
+    let q = sb.from("tickets").select("id, title, category, status, updated_at, purpose, profiles(username, name)").order("updated_at", { ascending: false }).limit(300);
+    if ($("#f-status").value) q = q.eq("status", $("#f-status").value);
+    if ($("#f-cat").value) q = q.eq("category", $("#f-cat").value);
+    const { data, error } = await q;
+    const list = $("#tlist");
+    list.replaceChildren();
+    if (error) { list.append(h("p", { class: "empty", text: errMsg(error) })); return; }
+    if (!data.length) { list.append(h("p", { class: "empty", style: "padding:24px 8px", text: "조건에 맞는 문의가 없어요." })); return; }
+    for (const t of data) {
+      list.append(h("button", { class: "titem", type: "button", "aria-current": current === t.id, onclick: () => openTicket(t.id) },
+        h("div", { class: "r1" }, h("b", { text: t.title }), Hy2Chat.statusChip(t.status)),
+        h("small", { text: `${t.profiles?.name || "탈퇴 회원"} · ${CATEGORIES[t.category]?.label || ""} · ${ago(t.updated_at)}` })));
+    }
+  }
+  async function openTicket(id) {
+    unmount(); current = id;
+    $("#app").classList.add("has-open");
+    $$("#tlist .titem").forEach((b) => b.setAttribute("aria-current", false));
+    const holder = h("div", { style: "display:flex;flex-direction:column;flex:1;min-height:0" });
+    $("#main").replaceChildren(h("div", { style: "padding:12px 16px 0" },
+      h("button", { class: "btn btn-quiet btn-sm back-btn", type: "button", onclick: () => { $("#app").classList.remove("has-open"); } }, "← 목록")), holder);
+    unmount = await Hy2Chat.mount(holder, { ticketId: id, me, isAdmin: true, onChange: () => { loadTickets(); loadStats(); } });
+    loadTickets();
+  }
+  sb.channel("admin-tickets").on("postgres_changes", { event: "*", schema: "public", table: "tickets" }, () => { loadTickets(); loadStats(); }).subscribe();
+
+  async function loadStats() {
+    const count = async (f) => { let q = sb.from("tickets").select("id", { count: "exact", head: true }); if (f) q = q.eq("status", f); return (await q).count ?? 0; };
+    const [open, answered, all] = await Promise.all([count("open"), count("answered"), count()]);
+    const { data: u } = await sb.rpc("admin_list_users");
+    $("#stats").replaceChildren(
+      h("span", { class: "stat glass" }, "답변 대기", h("b", { text: open })),
+      h("span", { class: "stat glass" }, "진행 중", h("b", { text: answered })),
+      h("span", { class: "stat glass" }, "전체 문의", h("b", { text: all })),
+      h("span", { class: "stat glass" }, "회원", h("b", { text: u?.length ?? 0 })));
+  }
+
+  // ── 회원 ──
+  async function loadUsers() {
+    const { data, error } = await sb.rpc("admin_list_users");
+    if (error) return toast(errMsg(error));
+    users = data; userMap = new Map(data.map((u) => [u.id, u]));
+    paintUsers();
+  }
+  $("#u-search").addEventListener("input", paintUsers);
+  function paintUsers() {
+    const q = $("#u-search").value.trim().toLowerCase();
+    const rows = users.filter((u) => !q || [u.username, u.name, u.email, u.last_ip].some((v) => (v || "").toLowerCase().includes(q)));
+    const body = $("#u-body");
+    body.replaceChildren();
+    if (!rows.length) { body.append(h("tr", {}, h("td", { colspan: "10", class: "empty", text: "회원이 없어요." }))); return; }
+    for (const u of rows) {
+      body.append(h("tr", {},
+        h("td", {}, h("b", { text: u.name }), u.role === "admin" ? h("span", { class: "chip answered", style: "margin-left:6px", text: "어드민" }) : null, h("span", { class: "sub", text: `@${u.username} · 가입 ${timeFull(u.created_at).slice(0, 12)}` })),
+        h("td", { text: u.email }),
+        h("td", {}, h("span", { class: `chip ${u.mfa_enabled ? "on" : "off"}`, text: u.mfa_enabled ? "사용" : "미사용" })),
+        h("td", {}, u.last_login_at ? timeFull(u.last_login_at) : "-", h("span", { class: "sub", text: `총 ${u.login_count}회` })),
+        h("td", { class: "mono", text: u.last_ip || "-" }),
+        h("td", { text: u.last_device || "-" }),
+        h("td", {}, u.last_vpn == null ? "-" : h("span", { class: `chip ${u.last_vpn ? "bad" : "off"}`, text: u.last_vpn ? "감지" : "없음" })),
+        h("td", { text: u.ticket_count }),
+        h("td", {}, h("span", { class: `chip ${u.is_banned ? "bad" : "on"}`, text: u.is_banned ? "제한" : "정상" })),
+        h("td", {}, userMenu(u))));
+    }
+  }
+
+  function userMenu(u) {
+    const self = u.id === me.id;
+    const wrap = h("div", { class: "menu" });
+    const list = h("div", { class: "menu-list glass", hidden: true });
+    const item = (label, fn, danger) => h("button", { type: "button", class: danger ? "danger" : "", onclick: () => { list.hidden = true; fn(); } }, label);
+    const run = async (body, okMsg) => {
+      const r = await callFn("admin", { ...body, user_id: u.id }, true);
+      if (!r.ok) return toast(r.message || "처리하지 못했어요."), false;
+      toast(okMsg); loadUsers(); return true;
+    };
+    list.append(
+      item("정보 수정", async () => {
+        const r = await formBox({ title: `${u.name} 정보 수정`, fields: [
+          { name: "name", label: "이름", value: u.name },
+          { name: "username", label: "아이디", value: u.username, hint: "영문·숫자·밑줄 3~20자" },
+          { name: "email", label: "이메일", value: u.email, type: "email" }] });
+        if (!r) return;
+        const body = { action: "update_user" };
+        if (r.name.trim() !== u.name) body.name = r.name;
+        if (r.username.trim() !== u.username) body.username = r.username;
+        if (r.email.trim().toLowerCase() !== (u.email || "").toLowerCase()) body.email = r.email;
+        if (Object.keys(body).length === 1) return toast("바뀐 내용이 없어요.");
+        run(body, "회원 정보를 바꿨어요.");
+      }),
+      item("비밀번호 재설정", async () => {
+        const r = await formBox({ title: "새 비밀번호 설정", ok: "재설정", fields: [{ name: "pw", label: "새 비밀번호", type: "text", hint: "8자 이상. 회원에게 안전한 방법으로 전달하고 로그인 후 바꾸도록 안내해 주세요." }] });
+        if (!r) return;
+        if (r.pw.length < 8) return toast("비밀번호는 8자 이상이어야 해요.");
+        run({ action: "reset_password", password: r.pw }, self ? "비밀번호를 바꿨어요." : "비밀번호를 재설정하고 기존 로그인을 끊었어요.");
+      }),
+      item("OTP 초기화", async () => {
+        if (!(await confirmBox({ title: "OTP를 초기화할까요?", body: "등록된 인증 앱이 지워지고 모든 기기에서 로그아웃돼요.", ok: "초기화", danger: true }))) return;
+        run({ action: "reset_mfa" }, "OTP를 초기화했어요.");
+      }),
+      item("로그인 기록 보기", () => { openTab("logs"); $("#l-search").value = u.username; paintLogs(); }),
+      item("모든 기기 로그아웃", () => run({ action: "revoke_sessions" }, "모든 기기에서 로그아웃시켰어요.")),
+      self ? null : item(u.is_banned ? "이용 제한 해제" : "이용 제한", async () => {
+        if (!u.is_banned && !(await confirmBox({ title: `${u.name}님을 제한할까요?`, body: "로그인과 문의가 막히고 지금 로그인도 끊겨요.", ok: "제한하기", danger: true }))) return;
+        run({ action: "set_ban", banned: !u.is_banned }, u.is_banned ? "제한을 풀었어요." : "이용을 제한했어요.");
+      }, !u.is_banned),
+      self ? null : item("회원 삭제", async () => {
+        if (!(await confirmBox({ title: `${u.name}님을 삭제할까요?`, body: "회원 정보, 문의, 로그인 기록이 모두 지워지고 되돌릴 수 없어요.", ok: "삭제", danger: true }))) return;
+        run({ action: "delete_user" }, "회원을 삭제했어요.");
+      }, true));
+    const btn = h("button", { class: "btn btn-quiet btn-sm", type: "button", "aria-haspopup": "true", onclick: (e) => {
+      e.stopPropagation();
+      $$(".menu-list").forEach((m) => m !== list && (m.hidden = true));
+      list.hidden = !list.hidden;
+    } }, "관리");
+    wrap.append(btn, list);
+    return wrap;
+  }
+  document.addEventListener("click", () => $$(".menu-list").forEach((m) => (m.hidden = true)));
+
+  // ── 로그인 기록 ──
+  let logs = [];
+  async function loadLogs() {
+    if (!users.length) await loadUsers();
+    const { data, error } = await sb.from("login_logs").select("user_id, created_at, ip, country, device, os, browser, is_vpn").order("created_at", { ascending: false }).limit(300);
+    if (error) return toast(errMsg(error));
+    logs = data; paintLogs();
+  }
+  $("#l-search").addEventListener("input", paintLogs);
+  function paintLogs() {
+    const q = $("#l-search").value.trim().toLowerCase();
+    const body = $("#l-body");
+    body.replaceChildren();
+    const rows = logs.filter((l) => { const u = userMap.get(l.user_id); return !q || (l.ip || "").includes(q) || (u?.username || "").toLowerCase().includes(q) || (u?.name || "").toLowerCase().includes(q); });
+    if (!rows.length) { body.append(h("tr", {}, h("td", { colspan: "8", class: "empty", text: "기록이 없어요." }))); return; }
+    for (const l of rows) {
+      const u = userMap.get(l.user_id);
+      body.append(h("tr", {},
+        h("td", { text: timeFull(l.created_at) }),
+        h("td", {}, u ? `${u.name} ` : "알 수 없음", u ? h("span", { class: "muted", text: `@${u.username}` }) : null),
+        h("td", { class: "mono", text: l.ip }), h("td", { text: l.country || "-" }),
+        h("td", { text: l.device }), h("td", { text: l.os }), h("td", { text: l.browser }),
+        h("td", {}, l.is_vpn == null ? "-" : h("span", { class: `chip ${l.is_vpn ? "bad" : "off"}`, text: l.is_vpn ? "감지" : "없음" }))));
+    }
+  }
+
+  // ── 후기 ──
+  async function loadReviews() {
+    const { data } = await sb.from("reviews").select("id, display_name, category, rating, body, created_at").order("created_at", { ascending: false });
+    const box = $("#r-list");
+    box.replaceChildren();
+    if (!data?.length) { box.append(h("p", { class: "empty", text: "아직 후기가 없어요." })); return; }
+    for (const r of data) {
+      box.append(h("div", { class: "rv" },
+        h("div", { class: "rv-top" }, h("span", {}, h("b", { text: r.display_name }), " ", h("span", { class: "muted", text: `${"★".repeat(r.rating)} · ${CATEGORIES[r.category]?.label || ""} · ${ago(r.created_at)}` })),
+          h("button", { class: "btn btn-danger btn-sm", type: "button", onclick: async () => {
+            if (!(await confirmBox({ title: "이 후기를 삭제할까요?", ok: "삭제", danger: true }))) return;
+            const { error } = await sb.from("reviews").delete().eq("id", r.id);
+            if (error) return toast(errMsg(error));
+            toast("후기를 삭제했어요."); loadReviews();
+          } }, "삭제")),
+        h("p", { text: r.body })));
+    }
+  }
+
+  loadStats();
+  loadTickets();
+  openTab(["users", "logs", "reviews"].includes(location.hash.slice(1)) ? location.hash.slice(1) : "inbox");
+})();
+</script>
+</body>
+</html>

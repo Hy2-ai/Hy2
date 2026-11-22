@@ -1,0 +1,69 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>개인정보 처리방침 · Hy2</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Noto+Sans+KR:wght@400;500;600;700&display=swap">
+<link rel="stylesheet" href="assets/style.css">
+<style>
+.doc{max-width:720px;margin:0 auto var(--s10);border-radius:var(--r-lg);padding:var(--s10)}
+.doc h1{font-size:28px;line-height:36px;font-weight:600;letter-spacing:-.02em}
+.doc h2{font-size:17px;font-weight:600;margin-top:var(--s6)}
+.doc p,.doc li{color:var(--ink-muted);line-height:26px;margin-top:8px}
+.doc ul{padding-left:20px;list-style:disc}
+.doc table{width:100%;border-collapse:collapse;margin-top:12px;font-size:14px}
+.doc th,.doc td{border-bottom:1px solid var(--hairline);padding:10px 8px;text-align:left;vertical-align:top}
+.doc th{color:var(--ink);font-weight:500;white-space:nowrap}
+.doc td{color:var(--ink-muted)}
+@media (max-width:600px){.doc{padding:var(--s6)}}
+</style>
+</head>
+<body>
+<canvas id="orbs" aria-hidden="true"></canvas>
+<div class="wrap">
+  <div class="nav-shell">
+    <nav class="nav glass"><a class="brand" href="index.html">Hy<sub>2</sub></a><a class="btn btn-quiet btn-sm btn-pill" href="index.html">홈으로</a></nav>
+  </div>
+  <article class="doc glass">
+    <h1>개인정보 처리방침</h1>
+    <p>Hy2(이하 "운영자")는 회원가입과 1:1 문의를 위해 아래와 같이 개인정보를 처리합니다. 시행일: 2026년 11월 22일</p>
+
+    <h2>1. 수집하는 항목과 목적</h2>
+    <div style="overflow-x:auto"><table>
+      <tr><th>항목</th><th>목적</th><th>보관 기간</th></tr>
+      <tr><td>아이디, 이름, 이메일, 비밀번호(암호화 저장)</td><td>회원 식별, 로그인</td><td>탈퇴 시까지</td></tr>
+      <tr><td>문의 내용, 채팅 메시지</td><td>외주 상담과 작업 진행</td><td>탈퇴 시까지</td></tr>
+      <tr><td>로그인 IP, 국가, 기기·운영체제·브라우저, 접속 시각, VPN 여부</td><td>부정 로그인 방지, 계정 보안</td><td><b>3개월 후 자동 삭제</b></td></tr>
+      <tr><td>후기(이름 첫 글자, 별점, 내용)</td><td>홈 화면 공개</td><td>최신 10개만 유지, 이후 자동 삭제</td></tr>
+    </table></div>
+
+    <h2>2. 비밀번호와 OTP</h2>
+    <p>비밀번호는 복구할 수 없는 방식(해시)으로 저장되어 운영자도 볼 수 없습니다. 비밀번호를 잊으면 운영자가 새 비밀번호로 재설정해 드립니다. OTP를 켜면 인증 앱의 6자리 코드로 한 번 더 확인합니다.</p>
+
+    <h2>3. 로그인 유지와 접속 제한</h2>
+    <ul>
+      <li>로그인 상태는 최대 7일 동안 유지되고, 그 뒤에는 다시 로그인해야 합니다.</li>
+      <li>보안을 위해 VPN·프록시·Tor 접속은 차단합니다. 판별을 위해 접속 IP를 proxycheck.io에 조회합니다.</li>
+    </ul>
+
+    <h2>4. 처리 위탁</h2>
+    <ul>
+      <li>Supabase Inc. — 데이터베이스·인증 (서버 위치: 대한민국 서울)</li>
+      <li>Cloudflare, Inc. — 웹사이트 호스팅</li>
+      <li>proxycheck.io — VPN·프록시 판별 (IP 주소만 전송)</li>
+    </ul>
+
+    <h2>5. 이용자의 권리</h2>
+    <p>내 정보 확인, 수정, 삭제(탈퇴)를 요청할 수 있습니다. 내 로그인 기록은 '내 계정 · 보안' 화면에서 직접 볼 수 있습니다.</p>
+
+    <h2>6. 문의처</h2>
+    <p>개인정보 담당: Hy2 · 이메일 hayul120205@outlook.kr · 인스타그램 @hy2_k1</p>
+  </article>
+</div>
+<script src="assets/vendor/supabase-2.45.4.js"></script>
+<script src="assets/app.js"></script>
+</body>
+</html>

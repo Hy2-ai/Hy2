@@ -1,0 +1,264 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>내 문의 · Hy2</title>
+<meta name="robots" content="noindex">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='16' fill='%23141a22'/%3E%3Ctext x='10' y='42' font-family='Arial' font-weight='700' font-size='28' fill='%23eef2f6'%3EHy%3C/text%3E%3Ctext x='45' y='48' font-family='Arial' font-weight='700' font-size='16' fill='%23bfe6f0'%3E2%3C/text%3E%3C/svg%3E">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Noto+Sans+KR:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap">
+<link rel="stylesheet" href="assets/style.css">
+<style>
+.pane{padding:var(--s6);overflow-y:auto;display:grid;gap:var(--s6);align-content:start;flex:1}
+.pane h2{font-size:22px;line-height:28px;font-weight:600;letter-spacing:-.01em}
+.pane .lead{color:var(--ink-muted);font-size:14px;margin-top:4px}
+.cat-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:12px}
+.cat{display:grid;gap:4px;text-align:left;padding:18px;border-radius:18px;border:1px solid var(--line);background:var(--glass-strong);cursor:pointer;color:var(--ink);font:inherit;transition:border-color .2s,transform .2s var(--ease)}
+.cat:hover{border-color:var(--accent);transform:translateY(-2px)}
+.cat b{font-size:15px;font-weight:600}
+.cat span{font-size:13px;color:var(--ink-muted);line-height:19px}
+.picked{display:flex;align-items:center;gap:var(--s2);flex-wrap:wrap}
+.purpose-chips{display:flex;flex-wrap:wrap;gap:var(--s2)}
+.purpose-chips button{font:500 13px/18px var(--sans);padding:7px 14px;border-radius:999px;border:1px solid var(--line);background:var(--glass-strong);color:var(--ink);cursor:pointer}
+.purpose-chips button[aria-pressed="true"]{background:var(--aqua);border-color:transparent}
+.new-form{display:grid;gap:var(--s4);max-width:640px}
+.sec{display:grid;gap:12px;padding:var(--s6);border-radius:20px;background:var(--hairline)}
+.sec h3{font-size:16px;font-weight:600}
+.kv{display:grid;grid-template-columns:90px minmax(0,1fr) auto;gap:10px var(--s4);align-items:center;font-size:14px}
+.kv dt{color:var(--ink-muted)}
+.kv dd{margin:0;overflow-wrap:anywhere}
+.otp-setup{display:grid;grid-template-columns:180px minmax(0,1fr);gap:var(--s6);align-items:start}
+.otp-setup img{width:180px;height:180px;background:#fff;border-radius:14px;padding:8px}
+@media (max-width:560px){.otp-setup{grid-template-columns:1fr}}
+.secret{font:500 13px/20px var(--mono);overflow-wrap:anywhere;padding:8px 12px;border-radius:10px;background:var(--glass-strong)}
+.table-wrap{overflow-x:auto}
+table{width:100%;border-collapse:collapse;font-size:13px;font-variant-numeric:tabular-nums}
+th,td{text-align:left;padding:10px 12px;border-bottom:1px solid var(--hairline);white-space:nowrap}
+th{font-weight:500;color:var(--ink-muted);font-size:12px}
+</style>
+</head>
+<body>
+<canvas id="orbs" aria-hidden="true"></canvas>
+<div class="wrap">
+  <div class="nav-shell">
+    <nav class="nav glass" aria-label="주요 메뉴">
+      <a class="brand" href="index.html">Hy<sub>2</sub></a>
+      <div class="nav-right">
+        <a class="btn btn-quiet btn-sm btn-pill" href="admin.html" id="to-admin" hidden>관리</a>
+        <a class="btn btn-quiet btn-sm btn-pill" href="index.html">홈</a>
+      </div>
+    </nav>
+  </div>
+
+  <div class="app" id="app">
+    <aside class="side glass" aria-label="내 문의 목록">
+      <button class="btn btn-primary" type="button" id="new-btn">새 문의 만들기</button>
+      <div class="side-head"><b>내 문의</b><small class="muted" id="count"></small></div>
+      <div class="tlist" id="tlist"></div>
+      <div class="side-foot">
+        <button class="btn btn-quiet btn-sm" type="button" id="account-btn">내 계정 · 보안</button>
+        <button class="btn btn-quiet btn-sm" type="button" id="logout-btn">로그아웃</button>
+      </div>
+    </aside>
+    <main class="main glass" id="main"></main>
+  </div>
+</div>
+
+<script src="assets/vendor/supabase-2.45.4.js"></script>
+<script src="assets/app.js"></script>
+<script src="assets/chat.js"></script>
+<script>
+(async () => {
+  const { sb, h, $, toast, errMsg, confirmBox, formBox, copyText, CATEGORIES, STATUS, ago, timeFull, requireUser, logout } = Hy2;
+  const me = await requireUser();
+  if (!me) return;
+  if (me.role === "admin") $("#to-admin").hidden = false;
+
+  const main = $("#main"), app = $("#app");
+  let tickets = [], current = null, unmount = () => {};
+
+  const backBtn = () => h("button", { class: "btn btn-quiet btn-sm back-btn", type: "button", onclick: () => show({ view: "home" }) }, "← 목록");
+
+  async function loadTickets() {
+    const { data } = await sb.from("tickets").select("id, title, category, status, updated_at").order("updated_at", { ascending: false });
+    tickets = data || [];
+    $("#count").textContent = tickets.length ? `${tickets.length}건` : "";
+    const list = $("#tlist");
+    list.replaceChildren();
+    if (!tickets.length) { list.append(h("p", { class: "empty", style: "padding:24px 8px", text: "아직 문의가 없어요." })); return; }
+    for (const t of tickets) {
+      list.append(h("button", { class: "titem", type: "button", "aria-current": current === t.id, onclick: () => show({ view: "chat", id: t.id }) },
+        h("div", { class: "r1" }, h("b", { text: t.title }), Hy2Chat.statusChip(t.status)),
+        h("small", { text: `${CATEGORIES[t.category]?.label || ""} · ${ago(t.updated_at)}` })));
+    }
+  }
+
+  function show(state, push = true) {
+    unmount(); unmount = () => {};
+    current = state.view === "chat" ? state.id : null;
+    app.classList.toggle("has-open", state.view !== "home");
+    const url = new URL(location.href);
+    url.search = state.view === "chat" ? `?t=${state.id}` : state.view === "new" && state.cat ? `?new=${state.cat}` : state.view === "new" ? "?new=" : state.view === "account" ? "?account=1" : "";
+    if (push) history.replaceState(null, "", url);
+    [...$("#tlist").children].forEach((b) => b.setAttribute?.("aria-current", false));
+    loadTickets();
+    if (state.view === "chat") return openChat(state.id);
+    if (state.view === "new") return newView(state.cat);
+    if (state.view === "account") return accountView();
+    homeView();
+  }
+
+  function homeView() {
+    main.replaceChildren(h("div", { class: "pane" },
+      h("div", {}, h("h2", { text: `${me.name}님, 안녕하세요` }),
+        h("p", { class: "lead", text: "왼쪽에서 문의를 고르거나 새 문의를 만들어 주세요. Hy2가 답장하면 여기서 바로 볼 수 있어요." })),
+      h("div", {}, h("button", { class: "btn btn-primary", type: "button", onclick: () => show({ view: "new" }) }, "새 문의 만들기"))));
+  }
+
+  async function openChat(id) {
+    const holder = h("div", { class: "chat-holder", style: "display:flex;flex-direction:column;flex:1;min-height:0" });
+    main.replaceChildren(h("div", { style: "padding:12px 16px 0" }, backBtn()), holder);
+    unmount = await Hy2Chat.mount(holder, { ticketId: id, me, onChange: loadTickets });
+  }
+
+  // 새 문의: 1) 분야 선택 → 2) 용도·제목·내용
+  function newView(cat) {
+    if (!cat || !CATEGORIES[cat]) {
+      main.replaceChildren(h("div", { class: "pane" }, backBtn(),
+        h("div", {}, h("h2", { text: "어떤 분야인가요?" }), h("p", { class: "lead", text: "분야를 고르면 그 분야에 맞춰 1:1 문의가 시작돼요." })),
+        h("div", { class: "cat-grid" }, Object.entries(CATEGORIES).map(([k, c]) =>
+          h("button", { class: "cat", type: "button", onclick: () => show({ view: "new", cat: k }) }, h("b", { text: c.label }), h("span", { text: c.desc }))))));
+      return;
+    }
+    const c = CATEGORIES[cat];
+    const picked = new Set();
+    const chips = h("div", { class: "purpose-chips", role: "group", "aria-label": "용도 고르기" },
+      c.purposes.map((p) => h("button", { type: "button", "aria-pressed": "false", onclick: (e) => {
+        picked.has(p) ? picked.delete(p) : picked.add(p);
+        e.currentTarget.setAttribute("aria-pressed", picked.has(p));
+      } }, p)));
+    const extra = h("input", { class: "input", id: "n-purpose", maxlength: "120", placeholder: "예) 300명 규모 게임 커뮤니티 서버에서 사용" });
+    const title = h("input", { class: "input", id: "n-title", maxlength: "80", placeholder: `예) ${c.purposes[0]}용 ${c.label} 제작 문의` });
+    const body = h("textarea", { class: "input", id: "n-body", maxlength: "2000", rows: "6",
+      placeholder: "필요한 기능, 원하는 완료 날짜, 예산 범위, 참고 자료를 알려 주세요." });
+    const msg = h("p", { class: "form-msg" });
+    const btn = h("button", { class: "btn btn-primary", type: "submit" }, "문의 보내기");
+    main.replaceChildren(h("div", { class: "pane" }, backBtn(),
+      h("div", { class: "picked" }, h("h2", { text: c.label }), h("button", { class: "btn btn-quiet btn-sm", type: "button", onclick: () => show({ view: "new" }) }, "분야 바꾸기")),
+      h("form", { class: "new-form", onsubmit: async (e) => {
+        e.preventDefault();
+        msg.textContent = "";
+        const purpose = [...picked, extra.value.trim()].filter(Boolean).join(" · ");
+        if (!purpose) { msg.textContent = "어디에 쓸지 하나 이상 고르거나 적어 주세요."; return; }
+        if (!title.value.trim()) { msg.textContent = "제목을 적어 주세요."; title.focus(); return; }
+        if (body.value.trim().length < 5) { msg.textContent = "내용을 5자 이상 적어 주세요."; body.focus(); return; }
+        btn.disabled = true;
+        const { data, error } = await sb.rpc("create_ticket", { p_category: cat, p_purpose: purpose.slice(0, 200), p_title: title.value.trim(), p_body: body.value.trim() });
+        btn.disabled = false;
+        if (error) { msg.textContent = errMsg(error); return; }
+        toast("문의를 보냈어요. 답장이 오면 여기서 볼 수 있어요.");
+        show({ view: "chat", id: data });
+      } },
+        h("div", { class: "field" }, h("span", { class: "label", text: "어디에 쓸 건가요?" }), chips, extra),
+        h("div", { class: "field" }, h("label", { for: "n-title", text: "제목" }), title),
+        h("div", { class: "field" }, h("label", { for: "n-body", text: "내용" }), body),
+        msg, h("div", {}, btn))));
+    title.focus();
+  }
+
+  // 내 계정: 정보, OTP, 로그인 기록
+  async function accountView() {
+    const pane = h("div", { class: "pane" }, backBtn(), h("div", {}, h("h2", { text: "내 계정 · 보안" })));
+    main.replaceChildren(pane);
+
+    const info = h("div", { class: "sec" }, h("h3", { text: "내 정보" }),
+      h("dl", { class: "kv" },
+        h("dt", { text: "아이디" }), h("dd", { text: me.username }), h("span"),
+        h("dt", { text: "이메일" }), h("dd", { text: me.email }), h("span"),
+        h("dt", { text: "이름" }), h("dd", { id: "my-name", text: me.name }),
+        h("button", { class: "btn btn-quiet btn-sm", type: "button", onclick: async () => {
+          const r = await formBox({ title: "이름 바꾸기", fields: [{ name: "name", label: "이름", value: me.name }] });
+          if (!r) return;
+          const name = r.name.trim();
+          if (!name || name.length > 30) return toast("이름은 1~30자로 입력해 주세요.");
+          const { error } = await sb.from("profiles").update({ name }).eq("id", me.id);
+          if (error) return toast(errMsg(error));
+          me.name = name; $("#my-name").textContent = name; toast("이름을 바꿨어요.");
+        } }, "변경")));
+    const otp = h("div", { class: "sec" });
+    const logs = h("div", { class: "sec" }, h("h3", { text: "최근 로그인 기록" }), h("p", { class: "muted", style: "font-size:13px", text: "로그인 IP와 기기 정보는 3개월 후 자동으로 삭제돼요." }));
+    pane.append(info, otp, logs);
+    paintOtp(otp);
+
+    const { data: rows } = await sb.from("login_logs").select("created_at, ip, device, os, browser, is_vpn").order("created_at", { ascending: false }).limit(20);
+    logs.append(h("div", { class: "table-wrap" }, h("table", {},
+      h("thead", {}, h("tr", {}, ["일시", "IP", "기기", "브라우저"].map((x) => h("th", { text: x })))),
+      h("tbody", {}, (rows || []).map((r) => h("tr", {},
+        h("td", { text: timeFull(r.created_at) }), h("td", { class: "mono", text: r.ip }),
+        h("td", { text: `${r.device} · ${r.os}` }), h("td", { text: r.browser })))))));
+  }
+
+  async function paintOtp(box) {
+    box.replaceChildren(h("h3", { text: "OTP 2단계 인증" }));
+    const { data } = await sb.auth.mfa.listFactors();
+    const verified = data?.totp?.find((f) => f.status === "verified");
+    if (verified) {
+      box.append(h("p", {}, h("span", { class: "chip on", text: "켜짐" }), " 로그인할 때 인증 앱의 6자리 코드를 함께 입력해요."),
+        h("div", {}, h("button", { class: "btn btn-danger btn-sm", type: "button", onclick: async () => {
+          if (!(await confirmBox({ title: "OTP를 끌까요?", body: "끄면 비밀번호만으로 로그인할 수 있게 돼요.", ok: "끄기", danger: true }))) return;
+          const { error } = await sb.auth.mfa.unenroll({ factorId: verified.id });
+          if (error) return toast("OTP를 끄지 못했어요. 다시 로그인한 뒤 시도해 주세요.");
+          toast("OTP를 껐어요."); paintOtp(box);
+        } }, "OTP 끄기")));
+      return;
+    }
+    box.append(h("p", {}, h("span", { class: "chip off", text: "꺼짐" }), " 켜 두면 비밀번호가 새어 나가도 계정을 지킬 수 있어요."),
+      h("div", {}, h("button", { class: "btn btn-primary btn-sm", type: "button", onclick: () => enrollOtp(box) }, "OTP 켜기")));
+  }
+
+  async function enrollOtp(box) {
+    // 끝내지 못한 이전 등록 정리
+    const { data: list } = await sb.auth.mfa.listFactors();
+    for (const f of list?.all || []) if (f.status !== "verified") await sb.auth.mfa.unenroll({ factorId: f.id });
+    const { data, error } = await sb.auth.mfa.enroll({ factorType: "totp", friendlyName: `Hy2-${Date.now()}` });
+    if (error) return toast("OTP 등록을 시작하지 못했어요.");
+    const code = h("input", { class: "input otp-input", id: "otp-code", inputmode: "numeric", maxlength: "6", placeholder: "000000", autocomplete: "one-time-code" });
+    const msg = h("p", { class: "form-msg" });
+    box.replaceChildren(h("h3", { text: "OTP 켜기" }),
+      h("div", { class: "otp-setup" },
+        h("img", { src: data.totp.qr_code, alt: "OTP 등록 QR 코드" }),
+        h("div", { style: "display:grid;gap:12px" },
+          h("p", { class: "muted", style: "font-size:14px", text: "1. Google Authenticator 같은 인증 앱으로 QR을 찍어 주세요. QR을 못 찍으면 아래 키를 직접 입력하세요." }),
+          h("div", { style: "display:flex;gap:8px;align-items:center" }, h("code", { class: "secret", text: data.totp.secret }),
+            h("button", { class: "btn btn-quiet btn-sm", type: "button", onclick: () => copyText(data.totp.secret, "키를 복사했어요.") }, "복사")),
+          h("p", { class: "muted", style: "font-size:14px", text: "2. 앱에 나온 6자리 코드를 입력해 주세요." }),
+          h("form", { style: "display:grid;gap:10px", onsubmit: async (e) => {
+            e.preventDefault();
+            const { error } = await sb.auth.mfa.challengeAndVerify({ factorId: data.id, code: code.value.trim() });
+            if (error) { msg.textContent = "코드가 맞지 않아요. 새 코드로 다시 입력해 주세요."; return; }
+            toast("OTP를 켰어요. 다음 로그인부터 코드를 입력해요.");
+            paintOtp(box);
+          } }, code, msg, h("div", { style: "display:flex;gap:8px" },
+            h("button", { class: "btn btn-primary btn-sm", type: "submit" }, "확인하고 켜기"),
+            h("button", { class: "btn btn-quiet btn-sm", type: "button", onclick: async () => { await sb.auth.mfa.unenroll({ factorId: data.id }); paintOtp(box); } }, "취소"))))));
+    code.focus();
+  }
+
+  $("#new-btn").onclick = () => show({ view: "new" });
+  $("#account-btn").onclick = () => show({ view: "account" });
+  $("#logout-btn").onclick = logout;
+
+  // 목록 실시간 갱신
+  sb.channel("my-tickets").on("postgres_changes", { event: "*", schema: "public", table: "tickets" }, () => loadTickets()).subscribe();
+
+  const p = new URLSearchParams(location.search);
+  if (p.get("t")) show({ view: "chat", id: p.get("t") }, false);
+  else if (p.has("new")) show({ view: "new", cat: p.get("new") }, false);
+  else if (p.get("account")) show({ view: "account" }, false);
+  else show({ view: "home" }, false);
+})();
+</script>
+</body>
+</html>
