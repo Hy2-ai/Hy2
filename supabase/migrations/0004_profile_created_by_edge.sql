@@ -16,3 +16,20 @@ $$;
 revoke all on function public.check_reserved_username() from public, anon, authenticated;
 create trigger profiles_reserved_username before insert or update of username on public.profiles
   for each row execute function public.check_reserved_username();
+
+-- SQL Editor·서버 작업(로그인 사용자 없음)에서는 권한 변경 허용, 회원 본인은 여전히 role/is_banned/username 변경 불가
+create or replace function public.protect_profile()
+returns trigger language plpgsql security definer set search_path = '' as $$
+begin
+  if auth.uid() is null or auth.role() = 'service_role' or public.is_admin() then
+    new.updated_at := now();
+    return new;
+  end if;
+  if new.role is distinct from old.role or new.is_banned is distinct from old.is_banned
+     or new.username is distinct from old.username or new.id is distinct from old.id then
+    raise exception 'not_allowed';
+  end if;
+  new.updated_at := now();
+  return new;
+end;
+$$;
