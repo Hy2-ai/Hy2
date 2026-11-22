@@ -6,8 +6,9 @@ Hy2 1인 스튜디오 홈페이지: 소개, 서비스, 후기, 코인 후원, �
 
 | 위치 | 역할 |
 | --- | --- |
-| `public/` | 정적 웹사이트 (Cloudflare Pages가 배포하는 폴더) |
-| `functions/_middleware.js` | Cloudflare Pages Functions: VPN·프록시·Tor 접속 차단 |
+| `public/` | 정적 웹사이트 (이 폴더만 공개됨) |
+| `src/worker.js`, `src/vpn.js` | Cloudflare Worker: VPN·프록시·Tor 접속 차단 후 `public/` 제공 |
+| `wrangler.jsonc` | Worker 설정 (이름 `hy2`, 정적 파일 폴더 `public`) |
 | `supabase/migrations/` | DB 테이블, 보안 정책(RLS), 자동 삭제 작업 |
 | `supabase/functions/auth` | 가입·로그인 (VPN 검사, IP·기기 기록, 로그인 실패 제한) |
 | `supabase/functions/admin` | 어드민 전용: 비밀번호·이름·이메일 재설정, OTP 초기화, 이용 제한 |
@@ -19,22 +20,19 @@ Hy2 1인 스튜디오 홈페이지: 소개, 서비스, 후기, 코인 후원, �
 - 후기: 문의가 종료된 회원만 작성, 최신 10개만 남고 나머지는 자동 삭제
 - 비밀번호는 해시로 저장되어 어드민도 볼 수 없고, 재설정만 가능
 
-## Cloudflare Pages 연결
+## Cloudflare 배포 (Workers)
 
-1. Cloudflare 대시보드 → **Workers & Pages** → **Create** → **Pages** → **Connect to Git**
-2. 이 저장소(`Hy2-ai/Hy2`) 선택
-3. 빌드 설정
-   - Framework preset: `None`
-   - Build command: (비워 두기)
-   - Build output directory: `public`
-4. **Settings → Variables and Secrets**에 `PROXYCHECK_KEY` 추가 (Secret 유형)
-5. 저장 후 배포 → `https://<프로젝트명>.pages.dev` 로 접속
+GitHub `Hy2-ai/Hy2`의 `main`에 올리면 Cloudflare Workers Builds가 `npx wrangler deploy`로 자동 배포합니다.
+
+- Worker 이름은 대시보드와 `wrangler.jsonc`의 `name`이 같아야 합니다 (`hy2`).
+- Build command는 비워 두고, Deploy command는 `npx wrangler deploy` 그대로 둡니다.
+- VPN 판별 키: Worker → **Settings → Variables and Secrets**에 `PROXYCHECK_KEY` (Secret) 추가
 
 ## proxycheck.io 키
 
 1. https://proxycheck.io 가입 → 대시보드에서 API 키 복사 (무료 하루 1,000회)
 2. 두 곳에 같은 키를 넣습니다.
-   - Cloudflare Pages: 위 4번 (`PROXYCHECK_KEY`)
+   - Cloudflare: Worker → Settings → Variables and Secrets (`PROXYCHECK_KEY`)
    - Supabase: Dashboard → Edge Functions → **Secrets** → `PROXYCHECK_KEY`
 3. 키가 없어도 하루 100회까지는 동작합니다. 판별 서비스가 응답하지 않으면 접속을 막지 않고 통과시킵니다.
 

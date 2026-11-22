@@ -1,4 +1,4 @@
-// Cloudflare Pages Functions 미들웨어: VPN·프록시로 접속하면 페이지를 막습니다.
+// VPN·프록시·Tor로 접속하면 페이지를 막습니다. (src/worker.js에서 사용)
 // - 판별: proxycheck.io (환경 변수 PROXYCHECK_KEY가 있으면 하루 1,000회, 없으면 100회 무료)
 // - 같은 IP는 1시간 동안 결과를 캐시해 호출 수를 줄입니다.
 // - 판별 서비스가 응답하지 않으면 통과시킵니다(장애 때 모든 방문자가 막히는 것 방지).
@@ -38,25 +38,24 @@ async function isVpn(ip, env, ctx) {
   return vpn;
 }
 
-export async function onRequest(context) {
-  const { request, env, next } = context;
-  if (request.method !== "GET") return next();
+export async function blockIfVpn(request, env, ctx) {
+  if (request.method !== "GET") return null;
 
   const url = new URL(request.url);
   const accept = request.headers.get("accept") || "";
   const isPage = accept.includes("text/html") || url.pathname.endsWith(".html") || url.pathname.endsWith("/");
-  if (!isPage) return next(); // 이미지·스크립트 요청은 검사하지 않음
+  if (!isPage) return null; // 이미지·스크립트 요청은 검사하지 않음
 
   const ip = request.headers.get("CF-Connecting-IP");
-  if (!ip) return next();
+  if (!ip) return null;
 
   // Tor는 Cloudflare가 국가 코드 T1로 표시
   const torExit = request.cf?.country === "T1";
-  if (torExit || (await isVpn(ip, env, context))) {
+  if (torExit || (await isVpn(ip, env, ctx))) {
     return new Response(BLOCK_HTML.replace("IP_PLACEHOLDER", ip.replace(/[^0-9a-fA-F:.]/g, "")), {
       status: 403,
       headers: { "Content-Type": "text/html; charset=utf-8", "Cache-Control": "no-store" },
     });
   }
-  return next();
+  return null;
 }

@@ -1,0 +1,14 @@
+{
+  // Cloudflare Workers 설정 (대시보드의 Worker 이름과 같아야 합니다)
+  "name": "hy2",
+  "main": "src/worker.js",
+  "compatibility_date": "2025-09-01",
+  "assets": {
+    "directory": "./public",
+    "binding": "ASSETS",
+    "run_worker_first": true,
+    "html_handling": "none",
+    "not_found_handling": "none"
+  },
+  "observability": { "enabled": true }
+}
