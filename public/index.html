@@ -7,7 +7,7 @@
 <meta name="description" content="Hy2 — 디스코드·텔레그램 봇, 웹사이트, AI 챗봇을 만드는 1인 스튜디오. 외주 문의 받습니다.">
 <meta property="og:title" content="Hy2">
 <meta property="og:description" content="봇, 웹, AI를 만드는 1인 스튜디오">
-<meta property="og:image" content="/assets/profile.jpg">
+<meta property="og:image" content="/assets/profile.png">
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='16' fill='%23141a22'/%3E%3Ctext x='10' y='42' font-family='Arial' font-weight='700' font-size='28' fill='%23eef2f6'%3EHy%3C/text%3E%3Ctext x='45' y='48' font-family='Arial' font-weight='700' font-size='16' fill='%23bfe6f0'%3E2%3C/text%3E%3C/svg%3E">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -23,11 +23,14 @@
 .lede{margin-top:var(--s6);max-width:31em;font-size:17px;line-height:28px;color:var(--ink-muted)}
 .hero-actions{margin-top:var(--s10);display:flex;flex-wrap:wrap;gap:12px}
 .portrait{position:relative;border-radius:32px;padding:8px}
-.portrait img{width:100%;height:auto;aspect-ratio:1;object-fit:cover;object-position:50% 30%;border-radius:26px}
+.portrait img{width:100%;height:auto;aspect-ratio:1;object-fit:cover;border-radius:26px;image-rendering:pixelated;background:#000}
 .portrait figcaption{position:absolute;left:20px;right:20px;bottom:20px;display:flex;justify-content:space-between;align-items:center;gap:var(--s2);
   padding:10px 10px 10px 16px;border-radius:18px}
 .portrait figcaption b{font-size:15px;font-weight:600;display:block}
-.portrait figcaption small{font-size:12px;color:var(--ink-muted)}
+.portrait figcaption small{font-size:12px;color:rgba(255,255,255,.66)}
+.portrait figcaption.glass{background:rgba(24,24,26,.62);border-color:rgba(255,255,255,.14);color:#fff;box-shadow:none}
+.portrait .icon-btn{background:rgba(255,255,255,.1);color:#fff}
+.portrait .icon-btn:hover{background:rgba(255,255,255,.22)}
 .icon-row{display:flex;gap:6px}
 .icon-btn{width:36px;height:36px;border-radius:11px;display:grid;place-items:center;background:var(--hairline);color:var(--ink)}
 .icon-btn:hover{background:var(--aqua);text-decoration:none}
@@ -142,7 +145,7 @@ footer{padding-block:var(--s6) var(--s10);display:flex;flex-wrap:wrap;justify-co
       </div>
     </div>
     <figure class="portrait glass" style="margin:0">
-      <img src="assets/profile.jpg" alt="Hy2 프로필 사진" width="900" height="900" fetchpriority="high">
+      <img src="assets/profile.png" alt="Hy2 프로필: 흑백 픽셀 얼굴" width="672" height="672" fetchpriority="high">
       <figcaption class="glass">
         <div><b>Hy2</b><small>Bot · Web · AI</small></div>
         <div class="icon-row">
