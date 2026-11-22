@@ -150,15 +150,23 @@ Deno.serve(async (req) => {
     if (dup) return fail(409, "username_taken", "이미 사용 중인 아이디입니다.");
 
     await admin.from("auth_attempts").insert({ ip, identifier: "signup", success: true });
-    const { error } = await admin.auth.admin.createUser({
+    const { data: created, error } = await admin.auth.admin.createUser({
       email, password, email_confirm: true,
       user_metadata: { username, name },
       app_metadata: { created_via: "hy2-edge" },
     });
-    if (error) {
-      const exists = /already|registered|exists/i.test(error.message);
+    if (error || !created?.user) {
+      const exists = /already|registered|exists/i.test(error?.message ?? "");
       return fail(exists ? 409 : 400, exists ? "email_taken" : "signup_failed",
         exists ? "이미 가입된 이메일입니다." : "가입하지 못했습니다. 입력값을 확인해 주세요.");
+    }
+    // 프로필은 서버만 만든다. 프로필이 없는 계정(우회 가입)은 로그인·문의를 쓸 수 없다.
+    const { error: pErr } = await admin.from("profiles").insert({ id: created.user.id, username, name, role: "user" });
+    if (pErr) {
+      await admin.auth.admin.deleteUser(created.user.id);
+      const taken = /duplicate|unique|reserved/i.test(pErr.message);
+      return fail(taken ? 409 : 500, taken ? "username_taken" : "signup_failed",
+        taken ? "이미 사용 중인 아이디입니다." : "가입하지 못했습니다. 잠시 후 다시 시도해 주세요.");
     }
     const r = await signInAndLog(email, password, ip, ua, vpn);
     if ("session" in r) return json(200, r);
