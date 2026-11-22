@@ -48,10 +48,10 @@ th{font-weight:500;color:var(--ink-muted);font-size:12px}
 <div class="wrap">
   <div class="nav-shell">
     <nav class="nav glass" aria-label="주요 메뉴">
-      <a class="brand" href="index.html">Hy<sub>2</sub></a>
+      <a class="brand" href="index.html" aria-label="Hy2 홈"><span class="mark" aria-hidden="true">H<i>2</i></span><span class="word">Hy<em>2</em></span></a>
       <div class="nav-right">
-        <a class="btn btn-quiet btn-sm btn-pill" href="admin.html" id="to-admin" hidden>관리</a>
         <a class="btn btn-quiet btn-sm btn-pill" href="index.html">홈</a>
+        <div id="nav-auth" class="nav-auth"></div>
       </div>
     </nav>
   </div>
@@ -78,7 +78,6 @@ th{font-weight:500;color:var(--ink-muted);font-size:12px}
   const { sb, h, $, toast, errMsg, confirmBox, formBox, copyText, CATEGORIES, STATUS, ago, timeFull, requireUser, logout } = Hy2;
   const me = await requireUser();
   if (!me) return;
-  if (me.role === "admin") $("#to-admin").hidden = false;
 
   const main = $("#main"), app = $("#app");
   let tickets = [], current = null, unmount = () => {};

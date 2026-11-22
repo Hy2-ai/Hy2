@@ -161,24 +161,51 @@
     location.href = "index.html";
   }
 
-  // 상단 메뉴의 로그인 버튼 상태
+  // 상단 메뉴의 로그인 상태: 로그인 전 → 로그인·문의하기 / 로그인 후 → 내 문의 + 프로필 메뉴
+  async function navUser() {
+    const { data } = await sb.auth.getSession();
+    if (!data.session) return null;
+    try {
+      const { data: ok } = await sb.rpc("session_ok");
+      if (ok !== true) return null;
+      const { data: p } = await sb.from("profiles").select("username, name, role").eq("id", data.session.user.id).maybeSingle();
+      return p || null;
+    } catch { return null; }
+  }
+
   async function paintNav() {
     const slot = $("#nav-auth");
     if (!slot) return;
-    const { data } = await sb.auth.getSession();
+    const page = location.pathname.split("/").pop() || "index.html";
+    const me = await navUser();
     slot.replaceChildren();
-    if (data.session) {
-      let isAdmin = false;
-      try {
-        const { data: ok } = await sb.rpc("is_admin_session");
-        isAdmin = ok === true;
-      } catch {}
-      if (isAdmin) slot.append(h("a", { class: "btn btn-quiet btn-sm btn-pill", href: "admin.html" }, "관리"));
-      slot.append(h("a", { class: "btn btn-primary btn-sm btn-pill", href: "inquiry.html" }, "내 문의"));
-    } else {
+    if (!me) {
       slot.append(h("a", { class: "btn btn-quiet btn-sm btn-pill", href: "login.html" }, "로그인"));
-      slot.append(h("a", { class: "btn btn-primary btn-sm btn-pill", href: "login.html?mode=signup" }, "문의하기"));
+      slot.append(h("a", { class: "btn btn-primary btn-sm btn-pill", href: "login.html?mode=signup" }, "회원가입"));
+      return;
     }
+    if (!page.startsWith("inquiry")) slot.append(h("a", { class: "btn btn-primary btn-sm btn-pill", href: "inquiry.html" }, "내 문의"));
+
+    const menu = h("div", { class: "user-menu glass", id: "user-menu", role: "menu", hidden: true },
+      h("div", { class: "um-head" },
+        h("span", { class: "avatar", "aria-hidden": "true", text: me.name.slice(0, 1) }),
+        h("div", {}, h("b", { text: me.name }), h("small", { text: `@${me.username}${me.role === "admin" ? " · 어드민" : ""}` }))),
+      h("a", { role: "menuitem", href: "inquiry.html" }, "내 문의"),
+      h("a", { role: "menuitem", href: "inquiry.html?account=1" }, "내 정보 · 보안"),
+      me.role === "admin" ? h("a", { role: "menuitem", href: "admin.html" }, "관리자 페이지") : null,
+      h("hr"),
+      h("button", { role: "menuitem", type: "button", class: "danger", onclick: logout }, "로그아웃"));
+    const btn = h("button", { class: "user-btn", type: "button", "aria-haspopup": "menu", "aria-expanded": "false", "aria-controls": "user-menu", "aria-label": `${me.name} 계정 메뉴` },
+      h("span", { class: "avatar", "aria-hidden": "true", text: me.name.slice(0, 1) }));
+    const toggle = (open) => {
+      menu.hidden = !open;
+      btn.setAttribute("aria-expanded", open);
+      if (open) menu.querySelector("a,button")?.focus();
+    };
+    btn.addEventListener("click", (e) => { e.stopPropagation(); toggle(menu.hidden); });
+    document.addEventListener("click", (e) => { if (!menu.hidden && !menu.contains(e.target)) toggle(false); });
+    document.addEventListener("keydown", (e) => { if (e.key === "Escape" && !menu.hidden) { toggle(false); btn.focus(); } });
+    slot.append(h("div", { class: "user-wrap" }, btn, menu));
   }
 
   // ── 배경: 유리 뒤에서 천천히 흐르는 색 원반 ──

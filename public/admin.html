@@ -42,10 +42,9 @@ td .sub{display:block;font-size:12px;color:var(--ink-muted)}
 <div class="wrap">
   <div class="nav-shell">
     <nav class="nav glass" aria-label="관리 메뉴">
-      <a class="brand" href="index.html">Hy<sub>2</sub> <span class="muted" style="font-size:13px;font-weight:500">관리</span></a>
+      <a class="brand" href="index.html" aria-label="Hy2 홈"><span class="mark" aria-hidden="true">H<i>2</i></span><span class="word">Hy<em>2</em></span> <span class="tag-admin">관리</span></a>
       <div class="nav-right">
-        <a class="btn btn-quiet btn-sm btn-pill" href="inquiry.html?account=1">내 계정</a>
-        <button class="btn btn-quiet btn-sm btn-pill" type="button" id="logout-btn">로그아웃</button>
+        <div id="nav-auth" class="nav-auth"></div>
       </div>
     </nav>
   </div>
@@ -111,7 +110,6 @@ td .sub{display:block;font-size:12px;color:var(--ink-muted)}
   const { sb, h, $, $$, toast, confirmBox, formBox, callFn, errMsg, CATEGORIES, STATUS, ago, timeFull, requireUser, logout } = Hy2;
   const me = await requireUser({ admin: true });
   if (!me) return;
-  $("#logout-btn").onclick = logout;
 
   let users = [], userMap = new Map(), unmount = () => {}, current = null;
 
