@@ -22,7 +22,7 @@ Hy2 1인 스튜디오 홈페이지: 소개, 서비스, 후기, 코인 후원, �
 ## Cloudflare Pages 연결
 
 1. Cloudflare 대시보드 → **Workers & Pages** → **Create** → **Pages** → **Connect to Git**
-2. 이 저장소(`Hy2-ai/hy2-site`) 선택
+2. 이 저장소(`Hy2-ai/Hy2`) 선택
 3. 빌드 설정
    - Framework preset: `None`
    - Build command: (비워 두기)
