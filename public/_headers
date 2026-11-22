@@ -7,7 +7,7 @@
   Content-Security-Policy: default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; img-src 'self' data: blob:; connect-src 'self' https://qoyngutpzhutpimjgbtz.supabase.co wss://qoyngutpzhutpimjgbtz.supabase.co; frame-ancestors 'none'; base-uri 'self'; form-action 'self'; object-src 'none'
 
 /assets/*
-  Cache-Control: public, max-age=3600
+  Cache-Control: public, max-age=300, must-revalidate
 
 /admin.html
   Cache-Control: no-store
@@ -15,3 +15,9 @@
   Cache-Control: no-store
 /login.html
   Cache-Control: no-store
+/
+  Cache-Control: no-cache
+/index.html
+  Cache-Control: no-cache
+/privacy.html
+  Cache-Control: no-cache
