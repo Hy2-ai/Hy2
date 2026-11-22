@@ -129,6 +129,12 @@ Deno.serve(async (req) => {
   if (vpn.isVpn) return fail(403, "vpn", "VPN이나 프록시를 끈 뒤 다시 시도해 주세요.");
 
   if (action === "signup") {
+    // 같은 IP에서 1시간에 3번까지만 가입 (입력값 검사를 통과한 시도만 셈)
+    const hourAgo = new Date(Date.now() - 60 * 60 * 1000).toISOString();
+    const { count: signups } = await admin.from("auth_attempts").select("id", { count: "exact", head: true })
+      .eq("ip", ip).eq("identifier", "signup").gte("created_at", hourAgo);
+    if ((signups ?? 0) >= 3) return fail(429, "rate_limited", "가입 시도가 너무 많습니다. 1시간 뒤에 다시 시도해 주세요.");
+
     const username = String(body.username ?? "").trim();
     const name = String(body.name ?? "").trim();
     const email = String(body.email ?? "").trim().toLowerCase();
@@ -143,6 +149,7 @@ Deno.serve(async (req) => {
     const { data: dup } = await admin.from("profiles").select("id").ilike("username", username.replace(/_/g, "\\_")).maybeSingle();
     if (dup) return fail(409, "username_taken", "이미 사용 중인 아이디입니다.");
 
+    await admin.from("auth_attempts").insert({ ip, identifier: "signup", success: true });
     const { error } = await admin.auth.admin.createUser({
       email, password, email_confirm: true,
       user_metadata: { username, name },

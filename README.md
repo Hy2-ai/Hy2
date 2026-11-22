@@ -38,13 +38,14 @@ GitHub `Hy2-ai/Hy2`의 `main`에 올리면 Cloudflare Workers Builds가 `npx wra
 
 ## 어드민 계정 만들기
 
-사이트의 회원가입에서 아래처럼 가입하면 자동으로 어드민이 됩니다. 다른 이메일로는 `Hy2` 아이디를 쓸 수 없습니다.
+가입만으로는 어드민이 되지 않습니다. (홈에 이메일이 공개되어 있어 남이 먼저 가입해 어드민이 되는 것을 막기 위함)
 
-- 아이디: `Hy2`
-- 이메일: `hayul120205@outlook.kr`
-- 비밀번호: 직접 정한 비밀번호
-
-가입 후 **내 계정 · 보안**에서 OTP를 켜 두세요.
+1. 사이트에서 아이디 `Hy2`, 이메일 `hayul120205@outlook.kr`로 가입합니다. `Hy2` 아이디는 이 이메일로만 가입할 수 있습니다.
+2. Supabase SQL Editor에서 본인 계정인지 확인한 뒤 어드민으로 지정합니다.
+   ```sql
+   update public.profiles set role = 'admin' where lower(username) = 'hy2';
+   ```
+3. 로그아웃 후 다시 로그인하고, **내 계정 · 보안**에서 OTP를 켭니다.
 
 ## Supabase 설정 권장
 
