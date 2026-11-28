@@ -16,6 +16,9 @@
   python predict.py --lambda-home 1.8 --lambda-away 1.1 \
                     --home-adj 0.92 --odds 1.95 3.60 4.00 --market-weight 0.5
 
+  # --odds 는 여러 번 줄 수 있음 (업체별 배당 → 마진 제거 후 평균)
+  #   --odds 1.95 3.60 4.00 --odds 1.92 3.55 4.10
+
   # 4) 데이터 50% + 분석가(Claude) 판단 50% + 토토 기대값
   python predict.py --lambda-home 1.8 --lambda-away 1.1 --odds 1.95 3.60 4.00 \
                     --analyst 52 25 23 --toto-odds 1.75 3.20 3.55 --ou-odds 1.85 1.80
@@ -132,7 +135,12 @@ def predict(args: argparse.Namespace) -> dict:
 
     final = model
     if args.odds:
-        market = implied_from_odds(args.odds)
+        # 업체별로 마진을 제거한 뒤 평균 → 한 업체의 이상치 영향 완화
+        per_book = [implied_from_odds(o) for o in args.odds]
+        market = [sum(col) / len(per_book) for col in zip(*per_book)]
+        result["bookmakers_used"] = len(per_book)
+        if len(per_book) > 1:
+            result["bookmaker_margins"] = [round(sum(1 / x for x in o) - 1, 4) for o in args.odds]
         w = args.market_weight
         final = [(1 - w) * mp + w * kp for mp, kp in zip(model, market)]
         result["market_probs"] = dict(zip(["home", "draw", "away"], (round(p, 4) for p in market)))
@@ -162,13 +170,13 @@ def predict(args: argparse.Namespace) -> dict:
     result["over_2_5"] = round(over25, 4)
     result["btts"] = round(btts, 4)
 
-    bet_odds = args.toto_odds or args.odds
+    bet_odds = args.toto_odds or (args.odds[0] if args.odds else None)
     if bet_odds:
         margin = sum(1 / o for o in bet_odds) - 1
         picks = {k: ev_block(p, o) for k, p, o in zip(["home", "draw", "away"], final, bet_odds)}
         best = max(picks, key=lambda k: picks[k]["ev"])
         result["toto"] = {
-            "odds_source": "toto_odds" if args.toto_odds else "odds",
+            "odds_source": "toto_odds" if args.toto_odds else "odds[0]",
             "bookmaker_margin": round(margin, 4),
             "picks": picks,
             "best_pick": best if picks[best]["ev"] > 0 else None,
@@ -193,8 +201,8 @@ def main() -> int:
     p.add_argument("--home-adj", type=float, default=1.0, help="홈 기대 득점 보정 배수 (부상 등)")
     p.add_argument("--away-adj", type=float, default=1.0, help="원정 기대 득점 보정 배수")
     p.add_argument("--rho", type=float, default=-0.1, help="Dixon-Coles 저득점 보정 (기본 -0.1, 0=끔)")
-    p.add_argument("--odds", type=float, nargs=3, metavar=("HOME", "DRAW", "AWAY"),
-                   help="소수 배당 (예: 1.95 3.60 4.00)")
+    p.add_argument("--odds", type=float, nargs=3, action="append", metavar=("HOME", "DRAW", "AWAY"),
+                   help="해외 업체 소수 배당 (예: 1.95 3.60 4.00). 업체마다 반복 가능")
     p.add_argument("--market-weight", type=float, default=0.5,
                    help="배당 내재 확률 반영 비중 0~1 (기본 0.5)")
     p.add_argument("--analyst", type=float, nargs=3, metavar=("HOME", "DRAW", "AWAY"),
