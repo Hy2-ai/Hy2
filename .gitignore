@@ -5,3 +5,4 @@ node_modules/
 .impeccable/
 .wrangler/
 node_modules/
+.claude/skills/instagram-agent/queue.json
