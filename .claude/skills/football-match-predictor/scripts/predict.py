@@ -15,6 +15,13 @@
   # 3) 부상·동기 등 보정 + 배당 블렌딩
   python predict.py --lambda-home 1.8 --lambda-away 1.1 \
                     --home-adj 0.92 --odds 1.95 3.60 4.00 --market-weight 0.5
+
+  # 4) 데이터 50% + 분석가(Claude) 판단 50% + 토토 기대값
+  python predict.py --lambda-home 1.8 --lambda-away 1.1 --odds 1.95 3.60 4.00 \
+                    --analyst 52 25 23 --toto-odds 1.75 3.20 3.55 --ou-odds 1.85 1.80
+
+최종 확률 = (1 - analyst_weight) × 데이터 확률 + analyst_weight × 분석가 판단
+데이터 확률 = (1 - market_weight) × 통계 모델 + market_weight × 배당 내재 확률
 """
 from __future__ import annotations
 
@@ -60,6 +67,29 @@ def implied_from_odds(odds: list[float]) -> list[float]:
     raw = [1 / o for o in odds]
     s = sum(raw)
     return [r / s for r in raw]
+
+
+def normalize_triplet(vals: list[float], name: str) -> list[float]:
+    """확률 3개(% 또는 0~1)를 합이 1이 되도록 정규화."""
+    if len(vals) != 3 or any(v < 0 for v in vals) or sum(vals) <= 0:
+        raise ValueError(f"{name} 는 0 이상의 값 3개(홈 무 원정)여야 합니다.")
+    s = sum(vals)
+    if not (0.95 <= s <= 1.05 or 95 <= s <= 105):
+        raise ValueError(f"{name} 합계가 {s:g} 입니다. 합이 100(%) 또는 1이 되게 주세요.")
+    return [v / s for v in vals]
+
+
+def ev_block(prob: float, odds: float) -> dict:
+    """기대값(EV)과 1/4 켈리 비중. EV = 확률 × 배당 - 1."""
+    ev = prob * odds - 1
+    kelly = ev / (odds - 1) if odds > 1 else 0.0
+    return {
+        "odds": odds,
+        "prob": round(prob, 4),
+        "fair_odds": round(1 / prob, 2) if prob > 0 else None,
+        "ev": round(ev, 4),
+        "quarter_kelly": round(max(0.0, kelly) / 4, 4),
+    }
 
 
 def expected_goals(args: argparse.Namespace) -> tuple[float, float]:
@@ -111,6 +141,16 @@ def predict(args: argparse.Namespace) -> dict:
         result["model_minus_market"] = dict(
             zip(["home", "draw", "away"], (round(mp - kp, 4) for mp, kp in zip(model, market))))
 
+    data = final
+    result["data_probs"] = dict(zip(["home", "draw", "away"], (round(p, 4) for p in data)))
+
+    if args.analyst:
+        analyst = normalize_triplet(args.analyst, "--analyst")
+        w = args.analyst_weight
+        final = [(1 - w) * dp + w * ap for dp, ap in zip(data, analyst)]
+        result["analyst_probs"] = dict(zip(["home", "draw", "away"], (round(p, 4) for p in analyst)))
+        result["analyst_weight"] = w
+
     result["final_probs"] = dict(zip(["home", "draw", "away"], (round(p, 4) for p in final)))
 
     scores = sorted(((m[h][a], f"{h}-{a}") for h in range(MAX_GOALS + 1)
@@ -121,6 +161,22 @@ def predict(args: argparse.Namespace) -> dict:
     btts = sum(m[h][a] for h in range(1, MAX_GOALS + 1) for a in range(1, MAX_GOALS + 1))
     result["over_2_5"] = round(over25, 4)
     result["btts"] = round(btts, 4)
+
+    bet_odds = args.toto_odds or args.odds
+    if bet_odds:
+        margin = sum(1 / o for o in bet_odds) - 1
+        picks = {k: ev_block(p, o) for k, p, o in zip(["home", "draw", "away"], final, bet_odds)}
+        best = max(picks, key=lambda k: picks[k]["ev"])
+        result["toto"] = {
+            "odds_source": "toto_odds" if args.toto_odds else "odds",
+            "bookmaker_margin": round(margin, 4),
+            "picks": picks,
+            "best_pick": best if picks[best]["ev"] > 0 else None,
+        }
+        if args.ou_odds:
+            # 오버/언더는 분석가 판단 없이 스코어 분포 기준
+            result["toto"]["over_2_5"] = ev_block(over25, args.ou_odds[0])
+            result["toto"]["under_2_5"] = ev_block(1 - over25, args.ou_odds[1])
     return result
 
 
@@ -141,10 +197,23 @@ def main() -> int:
                    help="소수 배당 (예: 1.95 3.60 4.00)")
     p.add_argument("--market-weight", type=float, default=0.5,
                    help="배당 내재 확률 반영 비중 0~1 (기본 0.5)")
+    p.add_argument("--analyst", type=float, nargs=3, metavar=("HOME", "DRAW", "AWAY"),
+                   help="분석가(Claude) 독자 판단 확률 (% 또는 0~1, 예: 52 25 23)")
+    p.add_argument("--analyst-weight", type=float, default=0.5,
+                   help="분석가 판단 반영 비중 0~1 (기본 0.5)")
+    p.add_argument("--toto-odds", type=float, nargs=3, metavar=("HOME", "DRAW", "AWAY"),
+                   help="실제로 걸 토토/프로토 배당 (없으면 --odds 로 기대값 계산)")
+    p.add_argument("--ou-odds", type=float, nargs=2, metavar=("OVER", "UNDER"),
+                   help="2.5골 오버/언더 배당")
     args = p.parse_args()
 
-    if not 0 <= args.market_weight <= 1:
-        p.error("--market-weight 는 0~1 사이여야 합니다.")
+    for name in ("market_weight", "analyst_weight"):
+        if not 0 <= getattr(args, name) <= 1:
+            p.error(f"--{name.replace('_', '-')} 는 0~1 사이여야 합니다.")
+    for name in ("toto_odds", "ou_odds"):
+        vals = getattr(args, name)
+        if vals and any(o <= 1.0 for o in vals):
+            p.error(f"--{name.replace('_', '-')} 는 1.0 보다 큰 소수 배당이어야 합니다.")
     try:
         print(json.dumps(predict(args), ensure_ascii=False, indent=2))
     except ValueError as e:
